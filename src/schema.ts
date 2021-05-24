@@ -2,7 +2,9 @@ import { makeExecutableSchema } from 'apollo-server'
 import { DateTimeResolver } from 'graphql-scalars'
 import { Context } from './context'
 import * as fs from 'fs'
-import { Data } from 'ws'
+const { PubSub } = require('apollo-server')
+
+const pubsub = new PubSub()
 
 const typeDefs = fs.readFileSync('./graphql/schema.graphql', {
   encoding: 'utf-8',
@@ -75,8 +77,14 @@ const resolvers = {
           },
         })
         .then((datapoint) => {
+          pubsub.publish('DATAPOINT_CREATED', { datapointCreated: datapoint });
           return { recordID: datapoint.id, record: datapoint }
         })
+    },
+  },
+  Subscription: {
+    datapointCreated: {
+      subscribe: () => pubsub.asyncIterator(['DATAPOINT_CREATED']),
     },
   },
   DateTime: DateTimeResolver,

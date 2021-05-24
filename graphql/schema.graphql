@@ -9,6 +9,10 @@ type Query {
     getDatapointsInTimeRange(data: DatapointsTimeRangeRequest!, orderBy:OrderByUploadedAtInput): [Datapoint]
 }
 
+type Subscription {
+    datapointCreated: Datapoint
+}
+
 enum SortOrder {
     asc
     desc
