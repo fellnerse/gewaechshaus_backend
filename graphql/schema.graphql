@@ -1,15 +1,21 @@
 type Mutation {
     addDevice(hostname: String!, name: String!): Device
-    addDatapoint(data: Measurement): CreatedDatapointPayload
+    addDatapoint(data: Measurement!): CreatedDatapointPayload
 }
 
 type Query {
-    getDevice(hostname: String): Device
+    getDevice(hostname: String!): Device
+    getDatapoint(id: Int!): Datapoint
+    getDatapointsInTimeRange(data: DatapointsTimeRangeRequest!, orderBy:OrderByUploadedAtInput): [Datapoint]
 }
 
 enum SortOrder {
     asc
     desc
+}
+
+input OrderByUploadedAtInput{
+    uploadedAt: SortOrder
 }
 
 scalar DateTime
@@ -20,6 +26,12 @@ input Measurement{
     temperature: Float!,
     uploadedAt: DateTime,
     hostname: String!
+}
+
+input DatapointsTimeRangeRequest{
+    start: DateTime!,
+    end: DateTime,
+    hostname:String!
 }
 
 type Device {
@@ -40,6 +52,6 @@ type Datapoint {
 }
 
 type CreatedDatapointPayload{
-    recordID: ID,
+    recordID: Int,
     record: Datapoint
 }
