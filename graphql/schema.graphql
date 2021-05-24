@@ -10,7 +10,7 @@ type Query {
 }
 
 type Subscription {
-    datapointCreated: Datapoint
+    datapointCreated(hostname: String): Datapoint
 }
 
 enum SortOrder {

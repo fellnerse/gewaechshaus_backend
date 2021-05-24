@@ -2,7 +2,9 @@ import { makeExecutableSchema } from 'apollo-server'
 import { DateTimeResolver } from 'graphql-scalars'
 import { Context } from './context'
 import * as fs from 'fs'
+
 const { PubSub } = require('apollo-server')
+const { withFilter } = require('apollo-server')
 
 const pubsub = new PubSub()
 
@@ -77,14 +79,22 @@ const resolvers = {
           },
         })
         .then((datapoint) => {
-          pubsub.publish('DATAPOINT_CREATED', { datapointCreated: datapoint });
+          pubsub.publish('DATAPOINT_CREATED', { datapointCreated: datapoint })
           return { recordID: datapoint.id, record: datapoint }
         })
     },
   },
   Subscription: {
     datapointCreated: {
-      subscribe: () => pubsub.asyncIterator(['DATAPOINT_CREATED']),
+      subscribe: withFilter(
+        () => pubsub.asyncIterator(['DATAPOINT_CREATED']),
+        (payload, variables) => {
+          return (
+            !variables.hostname ||
+            payload.datapointCreated.deviceHostname === variables.hostname
+          )
+        },
+      ),
     },
   },
   DateTime: DateTimeResolver,
