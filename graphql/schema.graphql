@@ -1,0 +1,45 @@
+type Mutation {
+    addDevice(hostname: String!, name: String!): Device
+    addDatapoint(data: Measurement): CreatedDatapointPayload
+}
+
+type Query {
+    getDevice(hostname: String): Device
+}
+
+enum SortOrder {
+    asc
+    desc
+}
+
+scalar DateTime
+
+input Measurement{
+    humidity: Float!,
+    light: Float!,
+    temperature: Float!,
+    uploadedAt: DateTime,
+    hostname: String!
+}
+
+type Device {
+    id:       Int!
+    hostname: String!
+    name:     String!
+    data:     [Datapoint!]!
+}
+
+type Datapoint {
+    id:              Int!
+    createdAt:       DateTime!
+    uploadedAt:      DateTime!
+    device:          Device!
+    humidity:        Float!
+    light:           Float!
+    temperature:     Float!
+}
+
+type CreatedDatapointPayload{
+    recordID: ID,
+    record: Datapoint
+}
