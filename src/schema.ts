@@ -38,7 +38,7 @@ const resolvers = {
             hostname: args.data.hostname,
           },
           uploadedAt: {
-            gte: args.data.start,
+            gt: args.data.start,
             lt: args.data.end || new Date(),
           },
         },
