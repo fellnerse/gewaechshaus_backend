@@ -14,37 +14,32 @@ const typeDefs = fs.readFileSync('./graphql/schema.graphql', {
 
 const resolvers = {
   Query: {
-    getDevice: (_parent, args: { hostname: string }, context: Context) => {
-      return context.prisma.device.findUnique({
-        where: { hostname: args.hostname || undefined },
+    device(_parent, args:{hostname: string}, context: Context){
+      return context.prisma.device.findMany({
+        where: {hostname: args.hostname || undefined}
       })
     },
-    getDatapoint(_parent, args: { id: number }, context: Context) {
-      return context.prisma.datapoint.findUnique({
-        where: { id: args.id },
-      })
-    },
-    getDatapointsInTimeRange(
+    datapoint(
       _parent,
       args: {
-        data: DatapointsTimeRangeRequest
-        orderBy: OrderByUploadedAtInput
+        filter?: DatapointsTimeRangeRequest
+        orderBy?: OrderByUploadedAtInput
       },
       context: Context,
     ) {
       return context.prisma.datapoint.findMany({
         where: {
           device: {
-            hostname: args.data.hostname,
+            hostname: args.filter?.hostname || undefined,
           },
           uploadedAt: {
-            gt: args.data.start,
-            lt: args.data.end || new Date(),
+            gt: args.filter?.start || undefined,
+            lt: args.filter?.end || new Date(),
           },
         },
         orderBy: args?.orderBy,
       })
-    },
+    }
   },
   Mutation: {
     addDevice: (
@@ -79,19 +74,19 @@ const resolvers = {
           },
         })
         .then((datapoint) => {
-          pubsub.publish('DATAPOINT_CREATED', { datapointCreated: datapoint })
+          pubsub.publish('DATAPOINT_CREATED', { datapoint: datapoint })
           return { recordID: datapoint.id, record: datapoint }
         })
     },
   },
   Subscription: {
-    datapointCreated: {
+    datapoint: {
       subscribe: withFilter(
         () => pubsub.asyncIterator(['DATAPOINT_CREATED']),
         (payload, variables) => {
           return (
             !variables.hostname ||
-            payload.datapointCreated.deviceHostname === variables.hostname
+            payload.datapoint.deviceHostname === variables.hostname
           )
         },
       ),
@@ -125,11 +120,6 @@ enum SortOrder {
 
 interface OrderByUploadedAtInput {
   uploadedAt: SortOrder
-}
-
-interface PostCreateInput {
-  title: string
-  content?: string
 }
 
 interface Measurement {

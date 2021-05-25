@@ -4,13 +4,12 @@ type Mutation {
 }
 
 type Query {
-    getDevice(hostname: String!): Device
-    getDatapoint(id: Int!): Datapoint
-    getDatapointsInTimeRange(data: DatapointsTimeRangeRequest!, orderBy:OrderByUploadedAtInput): [Datapoint]
+    device(hostname: String): [Device]
+    datapoint(filter: DatapointsTimeRangeRequest, orderBy:OrderByUploadedAtInput): [Datapoint]
 }
 
 type Subscription {
-    datapointCreated(hostname: String): Datapoint
+    datapoint(hostname: String): Datapoint
 }
 
 enum SortOrder {
@@ -33,9 +32,9 @@ input Measurement{
 }
 
 input DatapointsTimeRangeRequest{
-    start: DateTime!,
+    start: DateTime,
     end: DateTime,
-    hostname:String!
+    hostname:String
 }
 
 type Device {
