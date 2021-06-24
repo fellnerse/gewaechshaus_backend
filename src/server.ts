@@ -30,8 +30,8 @@ const myPlugin = {
 async function startApolloServer() {
   const configurations = {
     // Note: You may need sudo to run on port 443
-    production: { ssl: true, port: 4000, hostname: 'gwächs.haus' },
-    development: { ssl: false, port: 4000, hostname: 'localhost' },
+    production: { ssl: true, port: 4001, https_port: 4000, hostname: 'gwächs.haus' },
+    development: { ssl: false, port: 4001,https_port: 4000, hostname: 'localhost' },
   }
 
   const environment = process.env.NODE_ENV || 'production'
@@ -42,25 +42,29 @@ async function startApolloServer() {
     context: context,
     plugins: [myPlugin],
     subscriptions: {
-      path: '/subscriptions'
+      path: '/subscriptions',
     },
   })
   await server.start()
 
-  const app = express()
-  app.enable('trust proxy')
-  app.use((req, res, next) => {
-    req.secure ? next() : res.redirect('https://' + req.headers.host + req.url)
-  })
+  const http_app = express()
 
-  server.applyMiddleware({ app })
+  server.applyMiddleware({ app: http_app })
 
   // Create the HTTPS or HTTP server, per configuration
-  let httpServer
   if (config.ssl) {
+    const https_app = express()
+    https_app.enable('trust proxy')
+    https_app.use((req, res, next) => {
+      req.secure
+        ? next()
+        : res.redirect('https://' + req.headers.host + req.url)
+    })
+    server.applyMiddleware({ app: https_app })
+
     // Assumes certificates are in a .ssl folder off of the package root.
     // Make sure these files are secured.
-    httpServer = https.createServer(
+    let httpsServer = https.createServer(
       {
         key: fs.readFileSync(
           `/etc/letsencrypt/live/xn--gwchs-hra.haus/privkey.pem`,
@@ -69,16 +73,17 @@ async function startApolloServer() {
           `/etc/letsencrypt/live/xn--gwchs-hra.haus/fullchain.pem`,
         ),
       },
-      app,
+      https_app,
     )
-  } else {
-    httpServer = http.createServer(app)
+    server.installSubscriptionHandlers(httpsServer)
+    await httpsServer.listen({ port: config.https_port })
   }
-  server.installSubscriptionHandlers(httpServer);
 
-  await new Promise((resolve) =>
-    httpServer.listen({ port: config.port }, resolve),
-  )
+  let httpServer = http.createServer(http_app)
+  server.installSubscriptionHandlers(httpServer)
+
+  await httpServer.listen({ port: config.port })
+
   console.log(
     '🚀 Server ready at',
     `http${config.ssl ? 's' : ''}://${config.hostname}:${config.port}${
@@ -86,7 +91,7 @@ async function startApolloServer() {
     }`,
     `Subscriptions ready at ws://${config.hostname}:${config.port}${server.subscriptionsPath}`,
   )
-  return { server, app }
+  return { server, app: http_app }
 }
 
 startApolloServer()
