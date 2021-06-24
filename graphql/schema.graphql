@@ -52,6 +52,10 @@ type Datapoint {
     humidity:        Float!
     light:           Float!
     temperature:     Float!
+    uploadDay:       Int!
+    uploadHour:      Int!
+    uploadMinute:    Int!
+    uploadSecond:    Int!
 }
 
 type CreatedDatapointPayload{

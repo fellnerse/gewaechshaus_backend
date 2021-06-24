@@ -101,6 +101,30 @@ const resolvers = {
         })
         .device()
     },
+    uploadDay: (parent, _args, context: Context) => {
+      return context.prisma.datapoint
+          .findUnique({
+            where: { id: parent?.id },
+          }).then(datapoint => datapoint?.uploadedAt.getDay())
+    },
+    uploadHour: (parent, _args, context: Context) => {
+      return context.prisma.datapoint
+          .findUnique({
+            where: { id: parent?.id },
+          }).then(datapoint => datapoint?.uploadedAt.getHours())
+    },
+    uploadMinute: (parent, _args, context: Context) => {
+      return context.prisma.datapoint
+          .findUnique({
+            where: { id: parent?.id },
+          }).then(datapoint => datapoint?.uploadedAt.getMinutes())
+    },
+    uploadSecond: (parent, _args, context: Context) => {
+      return context.prisma.datapoint
+          .findUnique({
+            where: { id: parent?.id },
+          }).then(datapoint => datapoint?.uploadedAt.getSeconds())
+    },
   },
   Device: {
     data: (parent, _args, context: Context) => {
@@ -151,6 +175,7 @@ interface Datapoint {
   humidity: number
   light: number
   temperature: number
+  uploadHour: number
 }
 
 interface CreatedDatapointPayload {

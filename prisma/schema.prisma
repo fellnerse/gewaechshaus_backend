@@ -16,7 +16,7 @@ model Device {
 
 model Datapoint {
   id                Int       @id @default(autoincrement())
-  uploadedAt        DateTime @default(now())
+  uploadedAt        DateTime  @default(now())
   createdAt         DateTime  @default(now())
   device            Device    @relation(fields: [deviceHostname], references: [hostname])
   deviceHostname    String
