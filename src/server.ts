@@ -1,3 +1,4 @@
+require('dotenv').config()
 import * as express from 'express'
 import { ApolloServer } from 'apollo-server-express'
 import * as fs from 'fs'
@@ -30,8 +31,8 @@ const myPlugin = {
 async function startApolloServer() {
   const configurations = {
     // Note: You may need sudo to run on port 443
-    production: { ssl: true, port: 4001, https_port: 4000, hostname: 'gwächs.haus' },
-    development: { ssl: false, port: 4001,https_port: 4000, hostname: 'localhost' },
+    production: { http_port:80, https_port: 443, hostname: 'data2.gwächs.haus' },
+    development: { http_port: 4001,https_port: 4000, hostname: 'localhost' },
   }
 
   const environment = process.env.NODE_ENV || 'production'
@@ -47,19 +48,9 @@ async function startApolloServer() {
   })
   await server.start()
 
-  const http_app = express()
-
-  server.applyMiddleware({ app: http_app })
-
   // Create the HTTPS or HTTP server, per configuration
-  if (config.ssl) {
+  if (config.https_port) {
     const https_app = express()
-    https_app.enable('trust proxy')
-    https_app.use((req, res, next) => {
-      req.secure
-        ? next()
-        : res.redirect('https://' + req.headers.host + req.url)
-    })
     server.applyMiddleware({ app: https_app })
 
     // Assumes certificates are in a .ssl folder off of the package root.
@@ -67,10 +58,10 @@ async function startApolloServer() {
     let httpsServer = https.createServer(
       {
         key: fs.readFileSync(
-          `/etc/letsencrypt/live/xn--gwchs-hra.haus/privkey.pem`,
+          `${process.env.CERT_FOLDER}/privkey.pem`,
         ),
         cert: fs.readFileSync(
-          `/etc/letsencrypt/live/xn--gwchs-hra.haus/fullchain.pem`,
+          `${process.env.CERT_FOLDER}/fullchain.pem`,
         ),
       },
       https_app,
@@ -79,19 +70,35 @@ async function startApolloServer() {
     await httpsServer.listen({ port: config.https_port })
   }
 
-  let httpServer = http.createServer(http_app)
-  server.installSubscriptionHandlers(httpServer)
+  if (config.http_port){
+    const http_app = express()
+    server.applyMiddleware({ app: http_app })
 
-  await httpServer.listen({ port: config.port })
+    // if https and http are enabled we redirect all http calls to http
+    if (config.https_port){
+      http_app.enable('trust proxy')
+      http_app.use((req, res, next) => {
+        req.secure
+            ? next()
+            : res.redirect('https://' + req.headers.host + req.url)
+      })
+    }
+
+    let httpServer = http.createServer(http_app)
+    server.installSubscriptionHandlers(httpServer)
+
+    await httpServer.listen({ port: config.http_port })
+  }
+
 
   console.log(
     '🚀 Server ready at',
-    `http${config.ssl ? 's' : ''}://${config.hostname}:${config.port}${
+    `http${config.https_port ? 's' : ''}://${config.hostname}:${config.https_port || config.http_port}${
       server.graphqlPath
     }`,
-    `Subscriptions ready at ws://${config.hostname}:${config.port}${server.subscriptionsPath}`,
+    `Subscriptions ready at ws://${config.hostname}:${config.https_port || config.http_port}${server.subscriptionsPath}`,
   )
-  return { server, app: http_app }
+  return { server }
 }
 
 startApolloServer()

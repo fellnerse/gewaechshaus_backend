@@ -2,6 +2,7 @@ import { makeExecutableSchema } from 'apollo-server'
 import { DateTimeResolver } from 'graphql-scalars'
 import { Context } from './context'
 import * as fs from 'fs'
+import * as _ from 'lodash'
 
 const { PubSub } = require('apollo-server')
 const { withFilter } = require('apollo-server')
@@ -14,12 +15,12 @@ const typeDefs = fs.readFileSync('./graphql/schema.graphql', {
 
 const resolvers = {
   Query: {
-    device(_parent, args:{hostname: string}, context: Context){
+    device(_parent, args: { hostname: string }, context: Context) {
       return context.prisma.device.findMany({
-        where: {hostname: args.hostname || undefined}
+        where: { hostname: args.hostname || undefined },
       })
     },
-    datapoint(
+    async datapoint(
       _parent,
       args: {
         filter?: DatapointsTimeRangeRequest
@@ -27,7 +28,7 @@ const resolvers = {
       },
       context: Context,
     ) {
-      return context.prisma.datapoint.findMany({
+      let datapoints = context.prisma.datapoint.findMany({
         where: {
           device: {
             hostname: args.filter?.hostname || undefined,
@@ -39,7 +40,50 @@ const resolvers = {
         },
         orderBy: args?.orderBy,
       })
-    }
+
+      return datapoints.then((a) => {
+        // a = a.slice(-120, -100)
+        a = _.groupBy(
+          a,
+          (datapoint) =>
+            Math.floor(
+              datapoint.uploadedAt.getDay() / (7 / (args.filter?.day || 7)),
+            ) +
+            ',' +
+            Math.floor(
+              datapoint.uploadedAt.getHours() /
+                (24 / (args.filter?.hour || 24)),
+            ) +
+            ',' +
+            Math.floor(
+              datapoint.uploadedAt.getMinutes() /
+                (60 / (args.filter?.minute || 60)),
+            ) +
+            ',' +
+            Math.floor(
+              datapoint.uploadedAt.getSeconds() /
+                (60 / (args.filter?.second || 60)),
+            ),
+        )
+        a = _.chain(a)
+          .mapValues((value) => {
+            // mean of datapoints that are in same timeframe
+            let ret = value[0]
+            let keys = Object.keys(ret).filter(
+              (key) => typeof ret[key] === 'number' && key != 'id',
+            )
+            for (let key of keys) {
+              ret[key] = _.meanBy(value, key)
+            }
+            //ret.uploadedAt = Math.floor(_.chain(value).mapValues(val => val.uploadedAt.getTime()).values().mean().value())
+            return ret
+          })
+          .values()
+          .value()
+
+        return a
+      })
+    },
   },
   Mutation: {
     addDevice: (
@@ -103,27 +147,31 @@ const resolvers = {
     },
     uploadDay: (parent, _args, context: Context) => {
       return context.prisma.datapoint
-          .findUnique({
-            where: { id: parent?.id },
-          }).then(datapoint => datapoint?.uploadedAt.getDay())
+        .findUnique({
+          where: { id: parent?.id },
+        })
+        .then((datapoint) => datapoint?.uploadedAt.getDay())
     },
     uploadHour: (parent, _args, context: Context) => {
       return context.prisma.datapoint
-          .findUnique({
-            where: { id: parent?.id },
-          }).then(datapoint => datapoint?.uploadedAt.getHours())
+        .findUnique({
+          where: { id: parent?.id },
+        })
+        .then((datapoint) => datapoint?.uploadedAt.getHours())
     },
     uploadMinute: (parent, _args, context: Context) => {
       return context.prisma.datapoint
-          .findUnique({
-            where: { id: parent?.id },
-          }).then(datapoint => datapoint?.uploadedAt.getMinutes())
+        .findUnique({
+          where: { id: parent?.id },
+        })
+        .then((datapoint) => datapoint?.uploadedAt.getMinutes())
     },
     uploadSecond: (parent, _args, context: Context) => {
       return context.prisma.datapoint
-          .findUnique({
-            where: { id: parent?.id },
-          }).then(datapoint => datapoint?.uploadedAt.getSeconds())
+        .findUnique({
+          where: { id: parent?.id },
+        })
+        .then((datapoint) => datapoint?.uploadedAt.getSeconds())
     },
   },
   Device: {
@@ -158,6 +206,10 @@ interface DatapointsTimeRangeRequest {
   start: Date
   end: Date
   hostname: string
+  day: number
+  hour: number
+  minute: number
+  second: number
 }
 
 interface Device {

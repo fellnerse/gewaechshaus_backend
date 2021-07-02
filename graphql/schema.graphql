@@ -34,7 +34,11 @@ input Measurement{
 input DatapointsTimeRangeRequest{
     start: DateTime,
     end: DateTime,
-    hostname:String
+    hostname:String,
+    day: Int,
+    hour: Int,
+    minute: Int,
+    second: Int
 }
 
 type Device {
