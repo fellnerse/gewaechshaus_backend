@@ -1,5 +1,6 @@
 type Mutation {
     addDevice(hostname: String!, name: String!): Device
+    deleteDevice(hostname: String!): Device
     addDatapoint(data: Measurement!): CreatedDatapointPayload
 }
 

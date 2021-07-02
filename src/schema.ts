@@ -98,6 +98,23 @@ const resolvers = {
         },
       })
     },
+    deleteDevice: async (_parent, args: { hostname: string }, context: Context) => {
+      const deleteDatapoints = context.prisma.datapoint.deleteMany({
+        where: {
+          device: {
+            hostname: args.hostname,
+          },
+        },
+      })
+
+      return context.prisma.device.delete({
+        where: {
+          hostname: args.hostname,
+        },
+      })
+      // await context.prisma.$transaction([deleteDatapoints, deleteDevice])
+      // return deleteDevice
+    },
     addDatapoint: async (
       _parent,
       args: { data: Measurement },
